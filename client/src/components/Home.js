@@ -64,12 +64,19 @@ const Home = ({ user, logout }) => {
 
   const postMessage = async (body) => {
     try {
+      // saveMessage must be awaited to resolve the data
       const data = await saveMessage(body);
 
       // data has message: { senderId, text, conversationId },
       // sender
 
-      addMessageToConversation(data, body);
+      // a new conversation will include data.sender
+      // existing conversatioins have null sender
+      if (data.sender) {
+        addNewConvo(body.recipientId, data);
+      } else {
+        addMessageToConversation(data);
+      }
 
       sendMessage(data, body);
     } catch (error) {
@@ -77,55 +84,64 @@ const Home = ({ user, logout }) => {
     }
   };
 
-  const addMessageToConversation = useCallback(
-    (data, body) => {
-      const { message, sender = null } = data;
+  const addNewConvo = useCallback(
+    (otherUserId, data) => {
+      const { sender, message } = data;
 
-      // if sender isn't null, that means the message needs to be put in a brand new convo
-      if (sender !== null) {
-        // a new message sent from user will have a body.recipientId
-        // a new message sent from another user will have a sender.id
-        const fakeConvo = conversations.find(
-          (convo) =>
-            convo.otherUser.id === body.recipientId ||
-            convo.otherUser.id === sender.id
-        );
+      const newConvo = {
+        messages: [message],
+        id: message.conversationId,
+        latestMessageText: message.text,
+      };
 
-        const newConvo = {
-          messages: [message],
-          id: message.conversationId,
-          latestMessageText: message.text,
-        };
-        // if this user is sender, otheruser is recipient
-        // otherwise otheruser is sender
-        if (sender.id === user.id) {
-          newConvo.otherUser = fakeConvo.otherUser;
+      // if sent by this user, the other user will be in
+      // the list of fake convo
+      const newConversations = conversations.map((convo) => {
+        if (convo.otherUser.id === otherUserId) {
+          newConvo.otherUser = convo.otherUser;
+          return newConvo;
         } else {
-          newConvo.otherUser = sender;
+          return convo;
         }
+      });
 
-        // remove the fake convo
-        const removeFakeConvo = conversations.filter((convo) => {
-          return convo !== fakeConvo;
-        });
-
-        setConversations([...removeFakeConvo, newConvo]);
-      } else {
-        // add message to existing conversation
-        const existingConvo = conversations.find(
-          (convo) => convo.id === message.conversationId
-        );
-
-        const newConvo = { ...existingConvo, latestMessageText: message.text };
-        newConvo.messages = [...existingConvo.messages, message];
-
-        const unchangedConversations = conversations.filter(
-          (convo) => convo.id !== message.conversationId
-        );
-        setConversations([...unchangedConversations, newConvo]);
+      // if sent by other user, fake user may not exist
+      // so we will get other user data from sender
+      // and add convo to conversations
+      if (!newConversations.includes(newConvo)) {
+        newConvo.otherUser = sender;
+        newConversations.push(newConvo);
       }
+
+      setConversations(newConversations);
     },
-    [setConversations, conversations, user.id]
+    [setConversations, conversations]
+  );
+
+  const addMessageToConversation = useCallback(
+    (data) => {
+      const { sender, message } = data;
+      // if data.sender, this is a new convo
+      // initiated by the other party
+      if (sender) {
+        return addNewConvo(sender.id, data);
+      }
+
+      // map over conversations and modify this conversation
+      const newConversations = conversations.map((convo) => {
+        if (convo.id === message.conversationId) {
+          // add message to existing conversation
+          const newConvo = { ...convo, latestMessageText: message.text };
+          newConvo.messages = [...convo.messages, message];
+          return newConvo;
+        } else {
+          return convo;
+        }
+      });
+
+      setConversations(newConversations);
+    },
+    [setConversations, conversations, addNewConvo]
   );
 
   const setActiveChat = (username) => {
