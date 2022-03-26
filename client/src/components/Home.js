@@ -139,7 +139,7 @@ const Home = ({ user, logout }) => {
   );
 
   const addNewMessage = useCallback(
-    (data, recipientId) => {
+    (data, recipientId = null) => {
       const { sender } = data;
       // if sender, it's a new convo
       // if there's a recipient id, that means it was
