@@ -237,6 +237,37 @@ const Home = ({ user, logout }) => {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (activeConversation) {
+      const conversation = conversations.find(
+        (convo) => convo.otherUser.username === activeConversation
+      );
+      const editMessage = async (message) => {
+        await axios.put('/api/messages', {
+          message: { ...message, messageRead: true },
+        });
+      };
+      const messagesMarkedAsRead = conversation.messages.map(
+        async (message) => {
+          if (!message.messageRead) {
+            return await editMessage(message);
+          }
+          return message;
+        }
+      );
+      const convoCopy = { ...conversation, messagesMarkedAsRead };
+      setConversations((prev) =>
+        prev.map((convo) => {
+          if (convo.id === conversation.id) {
+            return convoCopy;
+          } else {
+            return convo;
+          }
+        })
+      );
+    }
+  }, [activeConversation, conversations]);
+
   const handleLogout = async () => {
     if (user && user.id) {
       await logout(user.id);
