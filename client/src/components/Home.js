@@ -226,8 +226,8 @@ const Home = ({ user, logout }) => {
           convo.messages.sort((a, b) => {
             return new Date(a.createdAt) > new Date(b.createdAt) ? 1 : -1;
           });
-          setConversations(data);
         });
+        setConversations(data);
       } catch (error) {
         console.error(error);
       }
