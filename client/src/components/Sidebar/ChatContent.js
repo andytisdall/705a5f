@@ -28,11 +28,11 @@ const useStyles = makeStyles((theme) => ({
   unreadMessages: {
     fontSize: 12,
     backgroundColor: '#3A8DFF',
-    color: 'white',
+    color: '#FFFFFF',
     borderRadius: '50px',
-    paddingRight: '5px',
-    paddingLeft: '5px',
-    marginRight: '10px',
+    paddingRight: 6,
+    paddingLeft: 6,
+    marginRight: 10,
   },
 }));
 

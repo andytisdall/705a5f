@@ -171,7 +171,7 @@ const Home = ({ user, logout }) => {
     [addNewConvo, addMessageToConversation]
   );
 
-  const updateMessagesAsRead = async (messages) => {
+  const updateMessagesAsRead = useCallback(async (messages) => {
     // api call for each unread message - switch to read
     return await Promise.all(
       messages.map(async (message) => {
@@ -184,32 +184,37 @@ const Home = ({ user, logout }) => {
         return message;
       })
     );
-  };
+  }, []);
 
-  const setActiveChat = async (username) => {
-    const activeConvo = conversations.find(
-      (convo) => convo.otherUser.username === username
-    );
-    if (activeConvo) {
-      // when a conversation becomes active, modify the messageRead attribute
-      // for any unread messages
-      const updatedMessages = await updateMessagesAsRead(activeConvo.messages);
-      if (updatedMessages) {
-        setConversations((prev) => {
-          const convoCopy = { ...activeConvo, messages: updatedMessages };
-          return prev.map((convo) => {
-            if (convo === activeConvo) {
-              return convoCopy;
-            } else {
-              return convo;
-            }
+  const setActiveChat = useCallback(
+    async (username) => {
+      const activeConvo = conversations.find(
+        (convo) => convo.otherUser.username === username
+      );
+      if (activeConvo) {
+        // when a conversation becomes active, modify the messageRead attribute
+        // for any unread messages
+        const updatedMessages = await updateMessagesAsRead(
+          activeConvo.messages
+        );
+        if (updatedMessages) {
+          setConversations((prev) => {
+            const convoCopy = { ...activeConvo, messages: updatedMessages };
+            return prev.map((convo) => {
+              if (convo === activeConvo) {
+                return convoCopy;
+              } else {
+                return convo;
+              }
+            });
           });
-        });
+        }
       }
-    }
 
-    setActiveConversation(username);
-  };
+      setActiveConversation(username);
+    },
+    [conversations, updateMessagesAsRead]
+  );
 
   const addOnlineUser = useCallback((id) => {
     setConversations((prev) =>
