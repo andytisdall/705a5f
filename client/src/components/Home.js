@@ -126,10 +126,14 @@ const Home = ({ user, logout }) => {
           fullActiveConvo &&
           data.message.senderId === fullActiveConvo.otherUser.id
         ) {
-          const response = await axios.patch(`/api/messages/${message.id}`, {
-            messageRead: true,
-          });
-          message = { ...message, ...response.data };
+          try {
+            const response = await axios.patch(`/api/messages/${message.id}`, {
+              messageRead: true,
+            });
+            message = { ...message, ...response.data };
+          } catch (error) {
+            console.error(error);
+          }
         }
       }
 
@@ -173,17 +177,21 @@ const Home = ({ user, logout }) => {
 
   const updateMessagesAsRead = useCallback(async (messages) => {
     // api call for each unread message - switch to read
-    return await Promise.all(
-      messages.map(async (message) => {
-        if (!message.messageRead) {
-          const { data } = await axios.patch(`/api/messages/${message.id}`, {
-            messageRead: true,
-          });
-          return data;
-        }
-        return message;
-      })
-    );
+    try {
+      return await Promise.all(
+        messages.map(async (message) => {
+          if (!message.messageRead) {
+            const { data } = await axios.patch(`/api/messages/${message.id}`, {
+              messageRead: true,
+            });
+            return data;
+          }
+          return message;
+        })
+      );
+    } catch (error) {
+      console.error(error);
+    }
   }, []);
 
   const setActiveChat = useCallback(
