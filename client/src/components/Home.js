@@ -25,6 +25,10 @@ const Home = ({ user, logout }) => {
   const classes = useStyles();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  // useEffect(() => {
+  //   console.log(conversations);
+  // }, [conversations]);
+
   const addSearchedUsers = (users) => {
     const currentUsers = {};
 
@@ -115,8 +119,20 @@ const Home = ({ user, logout }) => {
   );
 
   const addMessageToConversation = useCallback(
-    (data) => {
-      const { message } = data;
+    async (data) => {
+      let { message } = data;
+      // if this is the active convo, mark as read immediately
+      if (activeConversation) {
+        const { otherUser } = conversations.find(
+          (convo) => convo.otherUser.username === activeConversation
+        );
+        if (data.message.senderId === otherUser.id) {
+          const response = await axios.patch(`/api/messages/${message.id}`, {
+            messageRead: true,
+          });
+          message = { ...message, ...response.data };
+        }
+      }
 
       // map over conversations and modify this conversation
       setConversations((prev) =>
@@ -135,7 +151,7 @@ const Home = ({ user, logout }) => {
         })
       );
     },
-    [setConversations]
+    [setConversations, activeConversation, conversations]
   );
 
   const addNewMessage = useCallback(
@@ -156,9 +172,47 @@ const Home = ({ user, logout }) => {
     [addNewConvo, addMessageToConversation]
   );
 
-  const setActiveChat = (username) => {
-    setActiveConversation(username);
-  };
+  const setActiveChat = useCallback(
+    async (username) => {
+      const conversation = conversations.find(
+        (convo) => convo.otherUser.username === username
+      );
+
+      // when a conversation becomes active, modify the messageRead attribute
+      // for any unready messages
+      const markMessagesAsRead = async () => {
+        return await Promise.all(
+          conversation.messages.map(async (message) => {
+            if (!message.messageRead) {
+              const { data } = await axios.patch(
+                `/api/messages/${message.id}`,
+                {
+                  messageRead: true,
+                }
+              );
+              return data;
+            }
+            return message;
+          })
+        );
+      };
+      const messagesMarkedAsRead = await markMessagesAsRead();
+
+      setConversations((prev) => {
+        const convoCopy = { ...conversation, messages: messagesMarkedAsRead };
+        return prev.map((convo) => {
+          if (convo === conversation) {
+            return convoCopy;
+          } else {
+            return convo;
+          }
+        });
+      });
+
+      setActiveConversation(username);
+    },
+    [conversations]
+  );
 
   const addOnlineUser = useCallback((id) => {
     setConversations((prev) =>
@@ -239,34 +293,8 @@ const Home = ({ user, logout }) => {
 
   useEffect(() => {
     if (activeConversation) {
-      const conversation = conversations.find(
-        (convo) => convo.otherUser.username === activeConversation
-      );
-      const editMessage = async (message) => {
-        await axios.put('/api/messages', {
-          message: { ...message, messageRead: true },
-        });
-      };
-      const messagesMarkedAsRead = conversation.messages.map(
-        async (message) => {
-          if (!message.messageRead) {
-            return await editMessage(message);
-          }
-          return message;
-        }
-      );
-      const convoCopy = { ...conversation, messagesMarkedAsRead };
-      setConversations((prev) =>
-        prev.map((convo) => {
-          if (convo.id === conversation.id) {
-            return convoCopy;
-          } else {
-            return convo;
-          }
-        })
-      );
     }
-  }, [activeConversation, conversations]);
+  }, [activeConversation]);
 
   const handleLogout = async () => {
     if (user && user.id) {

@@ -8,6 +8,7 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'space-between',
     marginLeft: 20,
     flexGrow: 1,
+    alignItems: 'center',
   },
   username: {
     fontWeight: 'bold',
@@ -18,6 +19,12 @@ const useStyles = makeStyles((theme) => ({
     color: '#9CADC8',
     letterSpacing: -0.17,
   },
+  boldPreviewText: {
+    fontWeight: 'bold',
+    fontSize: 12,
+    color: 'inherit',
+    letterSpacing: -0.17,
+  },
   unreadMessages: {
     fontSize: 12,
     backgroundColor: '#3A8DFF',
@@ -25,6 +32,7 @@ const useStyles = makeStyles((theme) => ({
     borderRadius: '50px',
     paddingRight: '5px',
     paddingLeft: '5px',
+    marginRight: '10px',
   },
 }));
 
@@ -35,6 +43,8 @@ const ChatContent = ({ conversation }) => {
   const latestMessageText = conversation.id && conversation.latestMessageText;
 
   // get a count of unread messages, not counting ones from this user
+  // if it's over 0, change the styling of preview text
+  // and render an unread message count
   const unreadMessagesCount = conversation.messages.filter(
     (message) => otherUser.id === message.senderId && !message.messageRead
   ).length;
@@ -45,7 +55,11 @@ const ChatContent = ({ conversation }) => {
         <Typography className={classes.username}>
           {otherUser.username}
         </Typography>
-        <Typography className={classes.previewText}>
+        <Typography
+          className={
+            unreadMessagesCount ? classes.boldPreviewText : classes.previewText
+          }
+        >
           {latestMessageText}
         </Typography>
       </Box>
