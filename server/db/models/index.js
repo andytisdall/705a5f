@@ -4,14 +4,19 @@ const Message = require("./message");
 
 // associations
 
-User.hasMany(Conversation);
-Conversation.belongsTo(User, { as: "user1" });
-Conversation.belongsTo(User, { as: "user2" });
+// this creates a junction tables UserConversations with a mapping of users to conversations
+User.belongsToMany(Conversation, { through: "UserConversations" });
+Conversation.belongsToMany(User, { through: "UserConversations" });
+
 Message.belongsTo(Conversation);
 Conversation.hasMany(Message);
+
+// sets up a field readBy that references a table mapping messages to users
+Message.belongsToMany(User, { as: "readByUser", through: "UserReadMessages" });
+User.belongsToMany(Message, { as: "readMessge", through: "UserReadMessages" });
 
 module.exports = {
   User,
   Conversation,
-  Message
+  Message,
 };
