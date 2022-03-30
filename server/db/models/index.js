@@ -11,9 +11,8 @@ Conversation.belongsToMany(User, { through: "UserConversations" });
 Message.belongsTo(Conversation);
 Conversation.hasMany(Message);
 
-// sets up a field readBy that references a table mapping messages to users
+// sets up a field readByUser that references a table mapping messages to users
 Message.belongsToMany(User, { as: "readByUser", through: "UserReadMessages" });
-User.belongsToMany(Message, { as: "readMessge", through: "UserReadMessages" });
 
 module.exports = {
   User,
