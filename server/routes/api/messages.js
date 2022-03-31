@@ -17,7 +17,7 @@ router.post("/", async (req, res, next) => {
         senderId,
         text,
         conversationId,
-        messageRead: false,
+        read: false,
       });
       return res.json({ message, sender });
     }
@@ -41,7 +41,7 @@ router.post("/", async (req, res, next) => {
       senderId,
       text,
       conversationId: conversation.id,
-      messageRead: false,
+      read: false,
     });
     res.json({ message, sender });
   } catch (error) {
@@ -49,23 +49,23 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-router.patch("/:id", async (req, res, next) => {
+router.patch("/", async (req, res, next) => {
   try {
     if (!req.user) {
       return res.sendStatus(401);
     }
-    const { id } = req.params;
+    const { messages } = req.body;
 
-    const message = await Message.findOne({
-      where: {
-        id,
-      },
-    });
-    for (const key in req.body) {
-      message[key] = req.body[key];
-    }
-    await message.save();
-    res.json(message.toJSON());
+    const updatedMessages = await Message.update(
+      { read: true },
+      {
+        where: {
+          id: messages,
+        },
+      }
+    );
+
+    res.json(updatedMessages);
   } catch (error) {
     next(error);
   }
