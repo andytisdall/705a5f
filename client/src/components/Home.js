@@ -74,17 +74,15 @@ const Home = ({ user, logout }) => {
   };
 
   const setLastReadMessage = useCallback((lastReadMessage) => {
-    setConversations((prev) => {
+    setConversations((prev) =>
       // find the conversation, then find the new last read message
       // update lastReadMessage to true
       // update old last read message to false
-      console.log(lastReadMessage);
-      return prev.map((convo) => {
+      prev.map((convo) => {
         if (convo.id === lastReadMessage.conversationId) {
           const convoCopy = { ...convo };
           convoCopy.messages = convo.messages.map((message) => {
             if (message.id === lastReadMessage.id) {
-              console.log(message);
               return { ...message, lastRead: true };
             } else if (message.lastRead) {
               return { ...message, lastRead: false };
@@ -96,27 +94,34 @@ const Home = ({ user, logout }) => {
         } else {
           return convo;
         }
-      });
-    });
+      })
+    );
   }, []);
 
-  const updateMessagesAsRead = useCallback(async (messages) => {
-    // api call takes an array of messages and updates all their
-    // statuses to read
-    const messageIds = messages.map((message) => message.id);
-    try {
-      await axios.patch('/api/messages', {
-        messageIds,
-      });
-      // emit an object updating the other user about the most recent read messages
-      const lastReadMessage = messages[messages.length - 1];
-      return messages.map((message) => {
-        return { ...message, read: true };
-      });
-    } catch (error) {
-      console.error(error);
-    }
-  }, []);
+  const updateMessagesAsRead = useCallback(
+    async (messages) => {
+      // api call takes an array of messages and updates all their
+      // statuses to read
+      const messageIds = messages.map((message) => message.id);
+      try {
+        await axios.patch('/api/messages', {
+          messageIds,
+        });
+        // emit an object updating the other user about the most recent read messages
+        const lastReadMessage = {
+          ...messages[messages.length - 1],
+          read: true,
+        };
+        socket.emit('new-message', { message: lastReadMessage });
+        return messages.map((message) => {
+          return { ...message, read: true };
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    },
+    [socket]
+  );
 
   const addNewConvo = useCallback(
     (otherUserId, data) => {
@@ -197,8 +202,10 @@ const Home = ({ user, logout }) => {
 
   const addNewMessage = useCallback(
     (data, recipientId = null) => {
+      if (data.message.read) {
+        return setLastReadMessage(data.message);
+      }
       const { sender } = data;
-      console.log(data);
       // if sender, it's a new convo
       // if there's a recipient id, that means it was
       // passed here by the postMessage function
@@ -211,7 +218,7 @@ const Home = ({ user, logout }) => {
         addMessageToConversation(data);
       }
     },
-    [addNewConvo, addMessageToConversation]
+    [addNewConvo, addMessageToConversation, setLastReadMessage]
   );
 
   const setActiveChat = useCallback(
@@ -288,7 +295,13 @@ const Home = ({ user, logout }) => {
       socket.off('remove-offline-user', removeOfflineUser);
       socket.off('new-message', addNewMessage);
     };
-  }, [addNewMessage, addOnlineUser, removeOfflineUser, socket]);
+  }, [
+    addNewMessage,
+    addOnlineUser,
+    removeOfflineUser,
+    setLastReadMessage,
+    socket,
+  ]);
 
   useEffect(() => {
     // when fetching, prevent redirect

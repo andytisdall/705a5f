@@ -25,6 +25,11 @@ const useStyles = makeStyles(() => ({
     background: '#F4F6FA',
     borderRadius: '10px 10px 0 10px',
   },
+  avatar: {
+    height: 18,
+    width: 18,
+    marginTop: 8,
+  },
 }));
 
 const SenderBubble = ({ time, text, otherUser, lastRead }) => {
