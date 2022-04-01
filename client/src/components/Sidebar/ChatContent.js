@@ -46,7 +46,7 @@ const ChatContent = ({ conversation }) => {
   // if it's over 0, change the styling of preview text
   // and render an unread message count
   const unreadMessagesCount = conversation.messages.filter(
-    (message) => otherUser.id === message.senderId && !message.messageRead
+    (message) => otherUser.id === message.senderId && !message.read
   ).length;
 
   return (

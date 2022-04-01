@@ -73,26 +73,50 @@ const Home = ({ user, logout }) => {
     }
   };
 
-  const updateMessagesAsRead = useCallback(
-    async (messages) => {
-      // api call takes an array of messages and updates all their
-      // statuses to read
-      try {
-        const { data } = await axios.patch('/api/messages/', {
-          messages,
-        });
-        // emit an object updating the other user about the most recent read message
-        const latestMessage = messages[messages.length - 1];
-        socket.emit('read-message', {
-          message: latestMessage,
-        });
-        return data.messages;
-      } catch (error) {
-        console.error(error);
-      }
-    },
-    [socket]
-  );
+  const setLastReadMessage = useCallback((lastReadMessage) => {
+    setConversations((prev) => {
+      // find the conversation, then find the new last read message
+      // update lastReadMessage to true
+      // update old last read message to false
+      console.log(lastReadMessage);
+      return prev.map((convo) => {
+        if (convo.id === lastReadMessage.conversationId) {
+          const convoCopy = { ...convo };
+          convoCopy.messages = convo.messages.map((message) => {
+            if (message.id === lastReadMessage.id) {
+              console.log(message);
+              return { ...message, lastRead: true };
+            } else if (message.lastRead) {
+              return { ...message, lastRead: false };
+            } else {
+              return message;
+            }
+          });
+          return convoCopy;
+        } else {
+          return convo;
+        }
+      });
+    });
+  }, []);
+
+  const updateMessagesAsRead = useCallback(async (messages) => {
+    // api call takes an array of messages and updates all their
+    // statuses to read
+    const messageIds = messages.map((message) => message.id);
+    try {
+      await axios.patch('/api/messages', {
+        messageIds,
+      });
+      // emit an object updating the other user about the most recent read messages
+      const lastReadMessage = messages[messages.length - 1];
+      return messages.map((message) => {
+        return { ...message, read: true };
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  }, []);
 
   const addNewConvo = useCallback(
     (otherUserId, data) => {
@@ -168,12 +192,13 @@ const Home = ({ user, logout }) => {
         })
       );
     },
-    [setConversations, conversations, activeConversation, updateMessagesAsRead]
+    [conversations, activeConversation, updateMessagesAsRead]
   );
 
   const addNewMessage = useCallback(
     (data, recipientId = null) => {
       const { sender } = data;
+      console.log(data);
       // if sender, it's a new convo
       // if there's a recipient id, that means it was
       // passed here by the postMessage function
@@ -195,13 +220,13 @@ const Home = ({ user, logout }) => {
         (convo) => convo.otherUser.username === username
       );
       if (activeConvo) {
-        // when a conversation becomes active, modify the messageRead attribute
+        // when a conversation becomes active, modify the read attribute
         // for any unread messages
         const unreadMessages = activeConvo.messages.filter(
-          (message) => !message.read
+          (message) => !message.read && message.senderId !== user.id
         );
-        const updatedMessages = await updateMessagesAsRead(unreadMessages);
-        if (updatedMessages) {
+        if (unreadMessages.length) {
+          const updatedMessages = await updateMessagesAsRead(unreadMessages);
           setConversations((prev) => {
             const convoCopy = { ...activeConvo, messages: updatedMessages };
             return prev.map((convo) => {
@@ -217,7 +242,7 @@ const Home = ({ user, logout }) => {
 
       setActiveConversation(username);
     },
-    [conversations, updateMessagesAsRead]
+    [conversations, updateMessagesAsRead, user]
   );
 
   const addOnlineUser = useCallback((id) => {
@@ -286,6 +311,20 @@ const Home = ({ user, logout }) => {
           convo.messages.sort((a, b) => {
             return new Date(a.createdAt) > new Date(b.createdAt) ? 1 : -1;
           });
+          const userMessages = convo.messages.filter(
+            (message) => message.senderId === user.id
+          );
+          const anyRead = userMessages.find((message) => message.read);
+          if (anyRead) {
+            const firstUnread = userMessages.findIndex(
+              (message) => !message.read
+            );
+            if (firstUnread !== -1) {
+              userMessages[firstUnread - 1].lastRead = true;
+            } else {
+              userMessages[userMessages.length - 1].lastRead = true;
+            }
+          }
         });
         setConversations(data);
       } catch (error) {
