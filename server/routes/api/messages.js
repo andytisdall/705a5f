@@ -54,18 +54,17 @@ router.patch("/", async (req, res, next) => {
     if (!req.user) {
       return res.sendStatus(401);
     }
-    const { messages } = req.body;
+    const { messageIds } = req.body;
 
-    const updatedMessages = await Message.update(
+    await Message.update(
       { read: true },
       {
         where: {
-          id: messages,
+          id: messageIds,
         },
       }
     );
-
-    res.json(updatedMessages);
+    res.sendStatus(204);
   } catch (error) {
     next(error);
   }
