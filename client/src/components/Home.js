@@ -62,16 +62,11 @@ const Home = ({ user, logout }) => {
     });
   };
 
-  const postMessage = (body) => {
+  const postMessage = async (body) => {
     try {
-      const data = saveMessage(body);
-
-      if (!body.conversationId) {
-        addNewConvo(body.recipientId, data.message);
-      } else {
-        addMessageToConversation(data);
-      }
-
+      // saveMessage must be awaited to resolve the data
+      const data = await saveMessage(body);
+      addNewMessage(data, body.recipientId);
       sendMessage(data, body);
     } catch (error) {
       console.error(error);
@@ -79,42 +74,86 @@ const Home = ({ user, logout }) => {
   };
 
   const addNewConvo = useCallback(
-    (recipientId, message) => {
-      conversations.forEach((convo) => {
-        if (convo.otherUser.id === recipientId) {
-          convo.messages.push(message);
-          convo.latestMessageText = message.text;
-          convo.id = message.conversationId;
+    (otherUserId, data) => {
+      const { sender, message } = data;
+
+      setConversations((prev) => {
+        let existingConvoFound = false;
+        const dataToAddToConvo = {
+          id: message.conversationId,
+          latestMessageText: message.text,
+          messages: [message],
+        };
+
+        // if sent by this user, the other user will be in
+        // the list of fake convo
+        const conversationsCopy = prev.map((convo) => {
+          if (convo.otherUser.id === otherUserId) {
+            const convoCopy = {
+              ...convo,
+              ...dataToAddToConvo,
+            };
+            existingConvoFound = true;
+            return convoCopy;
+          } else {
+            return convo;
+          }
+        });
+        // if sent by other user, fake user may not exist
+        // so we will get otheruser data from sender
+        // and add convo to conversations
+        if (!existingConvoFound) {
+          conversationsCopy.push({
+            otherUser: sender,
+            ...dataToAddToConvo,
+          });
         }
+        return conversationsCopy;
       });
-      setConversations(conversations);
     },
-    [setConversations, conversations]
+    [setConversations]
   );
 
   const addMessageToConversation = useCallback(
     (data) => {
-      // if sender isn't null, that means the message needs to be put in a brand new convo
-      const { message, sender = null } = data;
-      if (sender !== null) {
-        const newConvo = {
-          id: message.conversationId,
-          otherUser: sender,
-          messages: [message],
-        };
-        newConvo.latestMessageText = message.text;
-        setConversations((prev) => [newConvo, ...prev]);
-      }
+      const { message } = data;
 
-      conversations.forEach((convo) => {
-        if (convo.id === message.conversationId) {
-          convo.messages.push(message);
-          convo.latestMessageText = message.text;
-        }
-      });
-      setConversations(conversations);
+      // map over conversations and modify this conversation
+      setConversations((prev) =>
+        prev.map((convo) => {
+          if (convo.id === message.conversationId) {
+            // add message to existing conversation
+            const convoCopy = {
+              ...convo,
+              latestMessageText: message.text,
+              messages: [...convo.messages, message],
+            };
+            return convoCopy;
+          } else {
+            return convo;
+          }
+        })
+      );
     },
-    [setConversations, conversations]
+    [setConversations]
+  );
+
+  const addNewMessage = useCallback(
+    (data, recipientId = null) => {
+      const { sender } = data;
+      // if sender, it's a new convo
+      // if there's a recipient id, that means it was
+      // passed here by the postMessage function
+      // otherwise it came from a remote user
+      if (sender) {
+        recipientId
+          ? addNewConvo(recipientId, data)
+          : addNewConvo(sender.id, data);
+      } else {
+        addMessageToConversation(data);
+      }
+    },
+    [addNewConvo, addMessageToConversation]
   );
 
   const setActiveChat = (username) => {
@@ -155,16 +194,16 @@ const Home = ({ user, logout }) => {
     // Socket init
     socket.on('add-online-user', addOnlineUser);
     socket.on('remove-offline-user', removeOfflineUser);
-    socket.on('new-message', addMessageToConversation);
+    socket.on('new-message', addNewMessage);
 
     return () => {
       // before the component is destroyed
       // unbind all event handlers used in this component
       socket.off('add-online-user', addOnlineUser);
       socket.off('remove-offline-user', removeOfflineUser);
-      socket.off('new-message', addMessageToConversation);
+      socket.off('new-message', addNewMessage);
     };
-  }, [addMessageToConversation, addOnlineUser, removeOfflineUser, socket]);
+  }, [addNewMessage, addOnlineUser, removeOfflineUser, socket]);
 
   useEffect(() => {
     // when fetching, prevent redirect
