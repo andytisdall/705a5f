@@ -11,18 +11,36 @@ router.get("/", async (req, res, next) => {
       return res.sendStatus(401);
     }
     const userId = req.user.id;
-    const user = await User.findOne({
+    const conversations = await Conversation.findAll({
       where: {
-        id: userId,
+        [Op.or]: {
+          user1Id: userId,
+          user2Id: userId,
+        },
       },
-    });
-    const conversations = await user.getConversations({
       attributes: ["id"],
-      order: [[Message, "createdAt", "ASC"]],
+      order: [[Message, "createdAt", "DESC"]],
       include: [
-        { model: Message, order: ["createdAt", "ASC"] },
+        { model: Message, order: ["createdAt", "DESC"] },
         {
           model: User,
+          as: "user1",
+          where: {
+            id: {
+              [Op.not]: userId,
+            },
+          },
+          attributes: ["id", "username", "photoUrl"],
+          required: false,
+        },
+        {
+          model: User,
+          as: "user2",
+          where: {
+            id: {
+              [Op.not]: userId,
+            },
+          },
           attributes: ["id", "username", "photoUrl"],
           required: false,
         },
@@ -33,14 +51,21 @@ router.get("/", async (req, res, next) => {
       const convo = conversations[i];
       const convoJSON = convo.toJSON();
 
-      // set property for online status of the other users
-      convo.users.forEach((user, i) => {
-        if (onlineUsers.includes(user.id)) {
-          convoJSON.users[i].online = true;
-        } else {
-          convoJSON.users[i].online = false;
-        }
-      });
+      // set a property "otherUser" so that frontend will have easier access
+      if (convoJSON.user1) {
+        convoJSON.otherUser = convoJSON.user1;
+        delete convoJSON.user1;
+      } else if (convoJSON.user2) {
+        convoJSON.otherUser = convoJSON.user2;
+        delete convoJSON.user2;
+      }
+
+      // set property for online status of the other user
+      if (onlineUsers.includes(convoJSON.otherUser.id)) {
+        convoJSON.otherUser.online = true;
+      } else {
+        convoJSON.otherUser.online = false;
+      }
 
       // set properties for notification count and latest message preview
       convoJSON.latestMessageText = convoJSON.messages[0].text;

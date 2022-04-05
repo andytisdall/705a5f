@@ -11,6 +11,5 @@ const Message = db.define("message", {
     allowNull: false,
   },
 });
-// will have field readByUsers with references to users
 
 module.exports = Message;
