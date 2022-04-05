@@ -184,11 +184,15 @@ const Home = ({ user, logout }) => {
       setConversations((prev) =>
         prev.map((convo) => {
           if (convo.id === message.conversationId) {
+            // see if we need to increment unread messages count
+            const increment =
+              message.senderId === convo.otherUser.id && !message.read ? 1 : 0;
             // add message to existing conversation
             const convoCopy = {
               ...convo,
               latestMessageText: message.text,
               messages: [...convo.messages, message],
+              unreadMessagesCount: convo.unreadMessagesCount + increment,
             };
             return convoCopy;
           } else {
@@ -235,7 +239,18 @@ const Home = ({ user, logout }) => {
         if (unreadMessages.length) {
           const updatedMessages = await updateMessagesAsRead(unreadMessages);
           setConversations((prev) => {
-            const convoCopy = { ...activeConvo, messages: updatedMessages };
+            const convoCopy = {
+              ...activeConvo,
+              messages: activeConvo.messages.map((message) => {
+                if (!message.read) {
+                  return { ...message, read: true };
+                } else {
+                  return message;
+                }
+              }),
+              unreadMessagesCount:
+                activeConvo.unreadMessagesCount - updatedMessages.length,
+            };
             return prev.map((convo) => {
               if (convo === activeConvo) {
                 return convoCopy;
@@ -324,6 +339,7 @@ const Home = ({ user, logout }) => {
           convo.messages.sort((a, b) => {
             return new Date(a.createdAt) > new Date(b.createdAt) ? 1 : -1;
           });
+          // find the most recent message from this user that has been read
           const userMessages = convo.messages.filter(
             (message) => message.senderId === user.id
           );
@@ -338,6 +354,11 @@ const Home = ({ user, logout }) => {
               userMessages[userMessages.length - 1].lastRead = true;
             }
           }
+          // get a count of unread messages, not counting ones from this user
+          convo.unreadMessagesCount = convo.messages.filter(
+            (message) =>
+              convo.otherUser.id === message.senderId && !message.read
+          ).length;
         });
         setConversations(data);
       } catch (error) {

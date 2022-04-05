@@ -13,6 +13,18 @@ router.post("/", async (req, res, next) => {
 
     // if we already know conversation id, we can save time and just add it to message and return
     if (conversationId) {
+      const conversation = await Conversation.findOne({
+        where: {
+          id: conversationId,
+        },
+      });
+      // forbidden if user id is not in the users for this convo
+      if (
+        !conversation ||
+        ![conversation.user1Id, conversation.user2Id].includes(senderId)
+      ) {
+        return res.sendStatus(401);
+      }
       const message = await Message.create({
         senderId,
         text,

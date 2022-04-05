@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography } from '@material-ui/core';
+import { Box, Typography, Badge } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 
 const useStyles = makeStyles((theme) => ({
@@ -26,28 +26,20 @@ const useStyles = makeStyles((theme) => ({
     letterSpacing: -0.17,
   },
   unreadMessages: {
-    fontSize: 12,
     backgroundColor: '#3A8DFF',
     color: '#FFFFFF',
-    borderRadius: '50px',
-    paddingRight: 6,
-    paddingLeft: 6,
-    marginRight: 10,
+    marginRight: 15,
   },
 }));
 
 const ChatContent = ({ conversation }) => {
   const classes = useStyles();
 
-  const { otherUser } = conversation;
+  const { otherUser, unreadMessagesCount } = conversation;
   const latestMessageText = conversation.id && conversation.latestMessageText;
 
-  // get a count of unread messages, not counting ones from this user
-  // if it's over 0, change the styling of preview text
+  // if unread messages count is over 0, change the styling of preview text
   // and render an unread message count
-  const unreadMessagesCount = conversation.messages.filter(
-    (message) => otherUser.id === message.senderId && !message.read
-  ).length;
 
   return (
     <Box className={classes.root}>
@@ -64,9 +56,10 @@ const ChatContent = ({ conversation }) => {
         </Typography>
       </Box>
       <Box>
-        <Typography className={classes.unreadMessages}>
-          {unreadMessagesCount ? unreadMessagesCount : null}
-        </Typography>
+        <Badge
+          badgeContent={unreadMessagesCount ? unreadMessagesCount : null}
+          classes={{ badge: classes.unreadMessages }}
+        />
       </Box>
     </Box>
   );
