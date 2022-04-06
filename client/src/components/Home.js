@@ -102,10 +102,9 @@ const Home = ({ user, logout }) => {
     async (messages) => {
       // api call takes an array of messages and updates all their
       // statuses to read
-      const messageIds = messages.map((message) => message.id);
       try {
         await axios.patch('/api/messages', {
-          messageIds,
+          messages,
         });
         // emit an object updating the other user about the most recent read messages
         const lastReadMessage = {
@@ -129,10 +128,13 @@ const Home = ({ user, logout }) => {
 
       setConversations((prev) => {
         let existingConvoFound = false;
+        const unreadMessagesCount = message.senderId === user.id ? 0 : 1;
+
         const dataToAddToConvo = {
           id: message.conversationId,
           latestMessageText: message.text,
           messages: [message],
+          unreadMessagesCount,
         };
 
         // if sent by this user, the other user will be in
@@ -161,7 +163,7 @@ const Home = ({ user, logout }) => {
         return conversationsCopy;
       });
     },
-    [setConversations]
+    [setConversations, user]
   );
 
   const addMessageToConversation = useCallback(

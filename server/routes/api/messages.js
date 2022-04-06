@@ -23,7 +23,7 @@ router.post("/", async (req, res, next) => {
         !conversation ||
         ![conversation.user1Id, conversation.user2Id].includes(senderId)
       ) {
-        return res.sendStatus(401);
+        return res.sendStatus(403);
       }
       const message = await Message.create({
         senderId,
@@ -66,7 +66,25 @@ router.patch("/", async (req, res, next) => {
     if (!req.user) {
       return res.sendStatus(401);
     }
-    const { messageIds } = req.body;
+    const { messages } = req.body;
+    const messageIds = messages.map((message) => message.id);
+    const { conversationId } = messages[0];
+
+    const conversation = await Conversation.findOne({
+      where: {
+        id: conversationId,
+      },
+    });
+
+    // forbidden if user is not part of this conversation
+    // or if the conversationId is not the same across all messages
+    if (
+      !conversation ||
+      ![conversation.user1Id, conversation.user2Id].includes(req.user.id) ||
+      !messages.every((message) => message.conversationId === conversationId)
+    ) {
+      return res.sendStatus(403);
+    }
 
     await Message.update(
       { read: true },
