@@ -338,9 +338,6 @@ const Home = ({ user, logout }) => {
       try {
         const { data } = await axios.get('/api/conversations');
         data.forEach((convo) => {
-          convo.messages.sort((a, b) => {
-            return new Date(a.createdAt) > new Date(b.createdAt) ? 1 : -1;
-          });
           // find the most recent message from this user that has been read
           const userMessages = convo.messages.filter(
             (message) => message.senderId === user.id
