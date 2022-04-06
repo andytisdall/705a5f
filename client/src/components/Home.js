@@ -359,6 +359,7 @@ const Home = ({ user, logout }) => {
               convo.otherUser.id === message.senderId && !message.read
           ).length;
         });
+
         setConversations(data);
       } catch (error) {
         console.error(error);
